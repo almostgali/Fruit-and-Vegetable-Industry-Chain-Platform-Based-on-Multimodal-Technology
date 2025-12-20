@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.back.mapper.UserMapper">
+    <!-- 根据用户名查询用户 -->
+    <select id="findByUsername" parameterType="String" resultType="org.back.entity.User">
+        SELECT * FROM user WHERE username = #{username}
+    </select>
+
+    <!-- 注册用户 -->
+    <insert id="register" parameterType="org.back.entity.User">
+        INSERT INTO user (username, password, email, phone, create_time, update_time)
+        VALUES (#{username}, #{password}, #{email}, #{phone}, #{createTime}, #{updateTime})
+    </insert>
+
+    <!-- 更新用户信息 -->
+    <update id="update" parameterType="org.back.entity.User">
+        UPDATE user
+        SET
+            username = #{username},
+            password = #{password},
+            email = #{email},
+            phone = #{phone},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询用户 -->
+    <select id="findById" parameterType="Integer" resultType="org.back.entity.User">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
+</mapper>

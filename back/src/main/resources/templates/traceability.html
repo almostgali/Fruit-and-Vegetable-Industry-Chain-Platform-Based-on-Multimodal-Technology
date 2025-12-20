@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <script>
+      (function() {
+        var designWidth = 1200;
+        var deviceWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
+        var scale = deviceWidth / designWidth;
+        var vp = document.getElementById('dynamic-viewport');
+        vp.setAttribute('content', 'width=device-width, initial-scale=' + scale.toFixed(3) + ', maximum-scale=1');
+      })();
+    </script>
+    <title>物流溯源跟踪</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .navigation-buttons {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .nav-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        
+        .nav-btn:active {
+            transform: translateY(0);
+        }
+        
+        .nav-btn i {
+            font-size: 16px;
+        }
+        
+        .home-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        
+        .home-btn:hover {
+            background: linear-gradient(135deg, #45a049 0%, #4CAF50 100%);
+        }
+        
+        .logistics-btn {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        }
+        
+        .logistics-btn:hover {
+            background: linear-gradient(135deg, #1976D2 0%, #2196F3 100%);
+        }
+
+        /* 登录弹窗样式 */
+        .modal { position: fixed; inset: 0; display: none; z-index: 2000; }
+        .modal.show { display: block; }
+        .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.3); }
+        .modal-content { position: relative; width: 400px; margin: 10% auto; background: #fff; border-radius: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); padding: 0; overflow: hidden; }
+        
+        /* 标签切换样式 */
+        .modal-tabs { display: flex; background: #f5f5f5; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: #666; transition: all 0.3s ease; }
+        .tab-btn.active { background: #fff; color: #2196F3; font-weight: 600; }
+        .tab-btn:hover { background: #e8f4fd; }
+        
+        /* 表单容器样式 */
+        .form-container { padding: 18px; }
+        .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #333; }
+        .modal-field { margin-bottom: 10px; }
+        .modal-field label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .modal-field input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        .modal-field input:focus { outline: none; border-color: #2196F3; box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2); }
+        .modal-actions { text-align: right; margin-top: 12px; }
+        .btn { padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; transition: all 0.3s ease; }
+        .btn-primary { background: #2196F3; color: #fff; }
+        .btn-primary:hover { background: #1976D2; }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-secondary { background: #e0e0e0; color: #333; }
+        .btn-secondary:hover { background: #d0d0d0; }
+        .btn + .btn { margin-left: 8px; }
+        .modal-message { font-size: 12px; color: #d32f2f; min-height: 18px; margin-top: 6px; }
+        .modal-message.success { color: #388e3c; }
+
+        /* 溯源页移动端适配 */
+        @media (max-width: 768px) {
+            .navigation-buttons { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); flex-wrap: wrap; gap: 8px; justify-content: center; }
+            .nav-btn { padding: 10px 14px; font-size: 14px; border-radius: 20px; }
+            #shipping-list { width: 100vw; height: 100vh; }
+            #shipping-list iframe { width: 100vw; height: calc(100vh - 100px); border: none; }
+        }
+        @media (max-width: 480px) {
+            .navigation-buttons { bottom: 10px; gap: 6px; }
+            .nav-btn { padding: 10px 12px; font-size: 13px; }
+            #shipping-list iframe { height: calc(100vh - 110px); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航按钮 -->
+    <div class="navigation-buttons">
+        <a href="/index" class="nav-btn home-btn">
+            <i>🏠</i>
+            返回首页
+        </a>
+        <button onclick="goToLogisticsManagement()" class="nav-btn logistics-btn">
+            <i>📦</i>
+            物流管理平台
+        </button>
+    </div>
+    
+    <div id="shipping-list" class="page" style="width: 100%; height: 100vh;">
+        <iframe src="/001智慧物流服务中心/index.html" style="width: 100vw; height: 100vh; border: none;"></iframe>
+    </div>
+
+    <!-- 登录/注册弹窗 -->
+    <div id="loginModal" class="modal" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+            <!-- 切换标签 -->
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="switchToLogin()">登录</button>
+                <button class="tab-btn" onclick="switchToRegister()">注册</button>
+            </div>
+            
+            <!-- 登录表单 -->
+            <div id="loginForm" class="form-container">
+                <div class="modal-title" id="loginModalTitle">物流管理员登录</div>
+                <div class="modal-field">
+                    <label for="loginUsername">用户名</label>
+                    <input type="text" id="loginUsername" placeholder="请输入用户名" />
+                </div>
+                <div class="modal-field">
+                    <label for="loginPassword">密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码" />
+                </div>
+                <div id="loginMessage" class="modal-message"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeLoginModal()">取消</button>
+                    <button class="btn btn-primary" id="loginSubmitBtn" onclick="submitLogin()">登录</button>
+                </div>
+            </div>
+            
+            <!-- 注册表单 -->
+            <div id="registerForm" class="form-container" style="display: none;">
+                <div class="modal-title">物流管理员注册</div>
+                <div class="modal-field">
+                    <label for="regUsername">用户名</label>
+                    <input type="text" id="regUsername" placeholder="请输入用户名" />
+                </div>
+                <div class="modal-field">
+                    <label for="regPassword">密码</label>
+                    <input type="password" id="regPassword" placeholder="请输入密码" />
+                </div>
+                <div class="modal-field">
+                    <label for="regConfirmPassword">确认密码</label>
+                    <input type="password" id="regConfirmPassword" placeholder="请再次输入密码" />
+                </div>
+                <div class="modal-field">
+                    <label for="regRealName">真实姓名</label>
+                    <input type="text" id="regRealName" placeholder="请输入真实姓名" />
+                </div>
+                <div class="modal-field">
+                    <label for="regPhone">联系电话</label>
+                    <input type="tel" id="regPhone" placeholder="请输入联系电话" />
+                </div>
+                <div class="modal-field">
+                    <label for="regEmail">邮箱</label>
+                    <input type="email" id="regEmail" placeholder="请输入邮箱地址" />
+                </div>
+                <div id="registerMessage" class="modal-message"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeLoginModal()">取消</button>
+                    <button class="btn btn-primary" id="registerSubmitBtn" onclick="submitRegister()">注册</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script>
+        function goToLogisticsManagement() {
+            openLoginModal();
+        }
+
+        function openLoginModal() {
+            const modal = document.getElementById('loginModal');
+            // 重置到登录界面
+            switchToLogin();
+            modal.classList.add('show');
+            setTimeout(() => document.getElementById('loginUsername').focus(), 0);
+        }
+
+        function closeLoginModal() {
+            const modal = document.getElementById('loginModal');
+            modal.classList.remove('show');
+            // 清空所有表单
+            clearAllForms();
+        }
+
+        function switchToLogin() {
+            // 切换标签状态
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            
+            // 显示登录表单，隐藏注册表单
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            
+            // 清空消息
+            clearMessages();
+        }
+
+        function switchToRegister() {
+            // 切换标签状态
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            
+            // 显示注册表单，隐藏登录表单
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            
+            // 清空消息
+            clearMessages();
+            setTimeout(() => document.getElementById('regUsername').focus(), 0);
+        }
+
+        function clearMessages() {
+            document.getElementById('loginMessage').textContent = '';
+            document.getElementById('registerMessage').textContent = '';
+        }
+
+        function clearAllForms() {
+            // 清空登录表单
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            
+            // 清空注册表单
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regConfirmPassword').value = '';
+            document.getElementById('regRealName').value = '';
+            document.getElementById('regPhone').value = '';
+            document.getElementById('regEmail').value = '';
+            
+            // 清空消息
+            clearMessages();
+            
+            // 重置按钮状态
+            const loginBtn = document.getElementById('loginSubmitBtn');
+            const registerBtn = document.getElementById('registerSubmitBtn');
+            loginBtn.disabled = false;
+            loginBtn.textContent = '登录';
+            registerBtn.disabled = false;
+            registerBtn.textContent = '注册';
+        }
+
+        function submitLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const msg = document.getElementById('loginMessage');
+            const btn = document.getElementById('loginSubmitBtn');
+
+            if (!username || !password) {
+                msg.textContent = '请输入用户名和密码';
+                msg.className = 'modal-message';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            msg.textContent = '';
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+
+            fetch('/logistics/login', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(data => {
+                if (data === 'success') {
+                    msg.className = 'modal-message success';
+                    msg.textContent = '登录成功，即将跳转...';
+                    setTimeout(() => { window.location.href = '/logistics/admin'; }, 400);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '登录';
+                    msg.className = 'modal-message';
+                    msg.textContent = '登录失败：' + data;
+                }
+            })
+            .catch(error => {
+                console.error('登录请求失败:', error);
+                btn.disabled = false;
+                btn.textContent = '登录';
+                msg.className = 'modal-message';
+                msg.textContent = '登录请求失败，请稍后重试';
+            });
+        }
+
+        function submitRegister() {
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value.trim();
+            const confirmPassword = document.getElementById('regConfirmPassword').value.trim();
+            const realName = document.getElementById('regRealName').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const msg = document.getElementById('registerMessage');
+            const btn = document.getElementById('registerSubmitBtn');
+
+            // 表单验证
+            if (!username || !password || !confirmPassword || !realName) {
+                msg.textContent = '请填写所有必填字段';
+                msg.className = 'modal-message';
+                return;
+            }
+
+            if (username.length < 3) {
+                msg.textContent = '用户名至少需要3个字符';
+                msg.className = 'modal-message';
+                return;
+            }
+
+            if (password.length < 6) {
+                msg.textContent = '密码至少需要6个字符';
+                msg.className = 'modal-message';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                msg.textContent = '两次输入的密码不一致';
+                msg.className = 'modal-message';
+                return;
+            }
+
+            if (email && !isValidEmail(email)) {
+                msg.textContent = '请输入有效的邮箱地址';
+                msg.className = 'modal-message';
+                return;
+            }
+
+            if (phone && !isValidPhone(phone)) {
+                msg.textContent = '请输入有效的手机号码';
+                msg.className = 'modal-message';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '注册中...';
+            msg.textContent = '';
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('realName', realName);
+            formData.append('phone', phone);
+            formData.append('email', email);
+
+            fetch('/logistics/register', { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(data => {
+                if (data === 'success') {
+                    msg.className = 'modal-message success';
+                    msg.textContent = '注册成功！即将切换到登录界面...';
+                    setTimeout(() => {
+                        switchToLogin();
+                        document.getElementById('loginUsername').value = username;
+                        document.getElementById('loginMessage').className = 'modal-message success';
+                        document.getElementById('loginMessage').textContent = '注册成功，请使用新账户登录';
+                    }, 1500);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '注册';
+                    msg.className = 'modal-message';
+                    msg.textContent = '注册失败：' + data;
+                }
+            })
+            .catch(error => {
+                console.error('注册请求失败:', error);
+                btn.disabled = false;
+                btn.textContent = '注册';
+                msg.className = 'modal-message';
+                msg.textContent = '注册请求失败，请稍后重试';
+            });
+        }
+
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function isValidPhone(phone) {
+            const phoneRegex = /^1[3-9]\d{9}$/;
+            return phoneRegex.test(phone);
+        }
+    </script>
+</body>
+</html>

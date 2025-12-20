@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <script>
+      (function() {
+        var designWidth = 1200;
+        var deviceWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
+        var scale = deviceWidth / designWidth;
+        var vp = document.getElementById('dynamic-viewport');
+        vp.setAttribute('content', 'width=device-width, initial-scale=' + scale.toFixed(3) + ', maximum-scale=1');
+      })();
+    </script>
+    <title>物流管理平台</title>
+    <link rel="stylesheet" href="/css/logistics-management.css">
+    <script src="/js/axios-lite.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航栏 -->
+        <div style="background: #f8f9fa; padding: 10px 20px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 10px;">
+                <a href="/index" style="padding: 8px 16px; background: #28a745; color: white; text-decoration: none; border-radius: 20px; font-size: 14px;">🏠 返回首页</a>
+                <a href="/traceability" style="padding: 8px 16px; background: #6c757d; color: white; text-decoration: none; border-radius: 20px; font-size: 14px;">📦 溯源跟踪</a>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span th:if="${admin}" style="color: #333; font-size: 14px;">
+                    👤 欢迎，<span th:text="${admin.realName}">管理员</span>
+                </span>
+                <a href="javascript:void(0)" onclick="logout()" style="padding: 8px 16px; background: #dc3545; color: white; text-decoration: none; border-radius: 20px; font-size: 14px;">🚪 退出登录</a>
+            </div>
+        </div>
+        
+        <!-- 头部导航 -->
+        <header class="header">
+            <h1>智慧物流管理平台</h1>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="order">订单管理</button>
+                <button class="nav-btn" data-tab="batch">批量录入</button>
+                <button class="nav-btn" data-tab="statistics">数据统计</button>
+                <button class="nav-btn" data-tab="dashboard">实时大屏</button>
+            </nav>
+        </header>
+
+        <!-- 订单管理页面 -->
+        <div class="tab-content active" id="order-tab">
+            <div class="section">
+                <h2>新增订单</h2>
+                <form id="orderForm" class="order-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>物流公司:</label>
+                            <select name="companyId" required>
+                                <option value="">请选择物流公司</option>
+                                <option value="1">顺丰速运</option>
+                                <option value="2">京东物流</option>
+                                <option value="3">中国邮政</option>
+                                <option value="4">圆通速递</option>
+                                <option value="5">中通快递</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>包裹类型:</label>
+                            <select name="packageType" required>
+                                <option value="">请选择包裹类型</option>
+                                <option value="0">文件</option>
+                                <option value="1">物品</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>寄件人信息</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>姓名:</label>
+                                <input type="text" name="senderName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>电话:</label>
+                                <input type="tel" name="senderPhone" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>省份:</label>
+                                <input type="text" name="senderProvince" required>
+                            </div>
+                            <div class="form-group">
+                                <label>城市:</label>
+                                <input type="text" name="senderCity" required>
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>详细地址:</label>
+                            <input type="text" name="senderAddress" required>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>收件人信息</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>姓名:</label>
+                                <input type="text" name="receiverName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>电话:</label>
+                                <input type="tel" name="receiverPhone" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>省份:</label>
+                                <input type="text" name="receiverProvince" required>
+                            </div>
+                            <div class="form-group">
+                                <label>城市:</label>
+                                <input type="text" name="receiverCity" required>
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>详细地址:</label>
+                            <input type="text" name="receiverAddress" required>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>包裹信息</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>重量(kg):</label>
+                                <input type="number" name="packageWeight" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>价值(元):</label>
+                                <input type="number" name="packageValue" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>运费(元):</label>
+                                <input type="number" name="freightCost" step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">创建订单</button>
+                        <button type="reset" class="btn btn-secondary">重置</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 订单列表 -->
+            <div class="section">
+                <h2>订单列表</h2>
+                <div class="filter-bar">
+                    <input type="text" id="cityFilter" placeholder="按城市筛选">
+                    <select id="statusFilter">
+                        <option value="">全部状态</option>
+                        <option value="1">已下单</option>
+                        <option value="2">已揽收</option>
+                        <option value="3">运输中</option>
+                        <option value="4">派送中</option>
+                        <option value="5">已签收</option>
+                        <option value="6">异常</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadOrderList()">查询</button>
+                </div>
+                <div class="table-container">
+                    <table id="orderTable">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>运单号</th>
+                                <th>寄件城市</th>
+                                <th>收件城市</th>
+                                <th>包裹类型</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="pagination"></div>
+            </div>
+        </div>
+
+        <!-- 批量录入页面 -->
+        <div class="tab-content" id="batch-tab">
+            <div class="section">
+                <h2>批量数据录入</h2>
+                <div class="batch-actions">
+                    <button class="btn btn-success" onclick="generateTestData()">生成测试数据</button>
+                    <input type="number" id="testDataCount" value="50" min="1" max="1000" placeholder="数据条数">
+                </div>
+                <div class="batch-result" id="batchResult"></div>
+            </div>
+        </div>
+
+        <!-- 数据统计页面 -->
+        <div class="tab-content" id="statistics-tab">
+            <div class="section">
+                <h2>数据统计</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>总订单数</h3>
+                        <div class="stat-value" id="totalOrders">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>运输中</h3>
+                        <div class="stat-value" id="inTransitOrders">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>已完成</h3>
+                        <div class="stat-value" id="completedOrders">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>异常订单</h3>
+                        <div class="stat-value" id="exceptionOrders">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时大屏页面 -->
+        <div class="tab-content" id="dashboard-tab">
+            <div class="section">
+                <h2>实时大屏</h2>
+                <div class="dashboard-actions">
+                    <button class="btn btn-primary" onclick="openDashboard()">打开大屏</button>
+                    <button class="btn btn-success" onclick="refreshDashboard()">刷新数据</button>
+                </div>
+                <iframe id="dashboardFrame" src="/001智慧物流服务中心/index.html" style="width: 100%; height: 600px; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <div id="message" class="message"></div>
+
+    <script src="/js/logistics-management.js"></script>
+</body>
+</html>

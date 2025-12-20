@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.back.mapper.LogisticsTrackingMapper">
+
+    <resultMap id="BaseResultMap" type="org.back.entity.LogisticsTracking">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="tracking_number" jdbcType="VARCHAR" property="trackingNumber" />
+        <result column="fruit_type" jdbcType="VARCHAR" property="fruitType" />
+        <result column="origin_location" jdbcType="VARCHAR" property="originLocation" />
+        <result column="destination" jdbcType="VARCHAR" property="destination" />
+        <result column="current_location" jdbcType="VARCHAR" property="currentLocation" />
+        <result column="status" jdbcType="VARCHAR" property="status" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, tracking_number, fruit_type, origin_location, destination, current_location, status, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="org.back.entity.LogisticsTracking" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO logistics_tracking (tracking_number, fruit_type, origin_location, destination, current_location, status, create_time, update_time)
+        VALUES (#{trackingNumber}, #{fruitType}, #{originLocation}, #{destination}, #{currentLocation}, #{status}, #{createTime}, #{updateTime})
+    </insert>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM logistics_tracking
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByTrackingNumber" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM logistics_tracking
+        WHERE tracking_number = #{trackingNumber}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM logistics_tracking
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByStatus" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM logistics_tracking
+        WHERE status = #{status}
+        ORDER BY create_time DESC
+    </select>
+
+    <update id="updateById" parameterType="org.back.entity.LogisticsTracking">
+        UPDATE logistics_tracking
+        SET tracking_number = #{trackingNumber},
+            fruit_type = #{fruitType},
+            origin_location = #{originLocation},
+            destination = #{destination},
+            current_location = #{currentLocation},
+            status = #{status},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM logistics_tracking WHERE id = #{id}
+    </delete>
+
+</mapper>

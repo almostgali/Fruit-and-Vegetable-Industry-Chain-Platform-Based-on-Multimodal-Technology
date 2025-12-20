@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <script>
+      (function() {
+        var designWidth = 1200; // 桌面设计宽度
+        var deviceWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
+        var scale = deviceWidth / designWidth;
+        var vp = document.getElementById('dynamic-viewport');
+        // 设置 initial-scale 为按设计宽度等比例缩放
+        vp.setAttribute('content', 'width=device-width, initial-scale=' + scale.toFixed(3) + ', maximum-scale=1');
+      })();
+    </script>
+    <title>“后稷”云智算果蔬产链平台</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <div style="display: flex; align-items: center">
+                <img src="/img/cffab35848c28f17ce2669d455863cc.png" width="60px" height="60px" title="logo" alt="logo" class="logo">
+                <span>“后稷”云智算果蔬产链平台</span>
+            </div>
+            <div>
+                <li><a class="active" href="/index" onclick="showPage('fruit-home')">首页</a></li>
+                <li><a href="/quality-detection" onclick="showPage('fruit-quality')">果蔬品质检测</a></li>
+                <li><a href="/maturity-detection" onclick="showPage('fruit-maturity')">果蔬成熟度检测</a></li>
+                <li><a href="/traceability" onclick="showPage('shipping-list')">物流溯源跟踪</a></li>
+            </div>
+            <div style="margin-right: 20px;">
+                <span style="color: aliceblue; border: 1px solid #ccc; padding: 10px 15px; border-radius: 5px; cursor: pointer;" onclick="window.location.href='/user/logout'">退出登录</span>
+            </div>
+        </ul>
+    </nav>
+
+    <div id="fruit-home" class="page">
+        <div class="container">
+            <div style="width: 100%;height: 70px;"></div>
+            <!-- 轮播图 -->
+            <div class="slideshow-container">
+                <div class="mySlides">
+                    <div class="mySlides-titie">技术应用</div>
+                    <div class="mySlides-item">运用深度学习和云计算技术，检测果蔬成熟度、进行质量等级分类，减少浪费；建立可溯源信息管理平台保障食品安全。</div>
+                </div>
+                <div class="mySlides">
+                    <div class="mySlides-titie">政策契合</div>
+                    <div class="mySlides-item">项目符合中央一号文件在乡村振兴、“三农” 发展、食品安全等方面政策与趋势</div>
+                </div>
+                <div class="mySlides">
+                    <div class="mySlides-titie">项目目标</div>
+                    <div class="mySlides-item">利用科技赋能农业振兴，增强市场竞争力，推动农业现代化与可持续发展</div>
+                </div>
+                <div class="mySlides">
+                    <div class="mySlides-titie">协同工作</div>
+                    <div class="mySlides-item">整个产业链实时了解果蔬的物流进展情况，实现各环节的高效协同</div>
+                </div>
+                <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+                <a class="next" onclick="plusSlides(1)">&#10095;</a>
+            </div>
+        </div>
+
+        <div class="stats-section" style="width: 100%; height: 40vh; background-color: #fff; display: flex; align-items: center; flex-direction: column;">
+            <h1 style="text-align: center; margin-top: 20px;">智慧农贸</h1>
+            <div class="stats-grid" style="width: 70%; height: 60%; display: flex; justify-content: space-around; align-items: center;">
+                <div class="stats-item" style="border-left: 1px solid #ccc; padding:0 40px;width: 25%;">
+                    <h1 style="text-align: center; font-size: 60px; color: blue;">20+</h1>
+                    <h3 style="text-align: center;">20+年行业积累经验</h3>
+                </div>
+                <div class="stats-item" style="border-left: 1px solid #ccc; padding:0 40px;width: 25%;">
+                    <h1 style="text-align: center; font-size: 60px; color: blue;">20+</h1>
+                    <h3 style="text-align: center;">20+年设备研发经验</h3>
+                </div>
+                <div class="stats-item" style="border-left: 1px solid #ccc; padding:0 40px;width: 25%;">
+                    <h1 style="text-align: center; font-size: 60px; color: blue;">100+</h1>
+                    <h3 style="text-align: center;">100+政府单位认可</h3>
+                </div>
+                <div class="stats-item" style="border-left: 1px solid #ccc; padding:0 40px;width: 25%;">
+                    <h1 style="text-align: center; font-size: 60px; color: blue;">1000+</h1>
+                    <h3 style="text-align: center;">1000+农贸市场的选择</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="hove_down">
+            <div class="hover-grid" style="width: 70%;height: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center;">
+                <div class="hover-item" style="margin-top: 40px; display: flex; align-items: center; flex-direction: column; background-image: url('/img/back1.jpg'); background-size: cover; background-position: center;">
+                    <div style="width: 100%; height: 100%; background-color: rgba(141, 141, 141, 0.6); border-radius: 15px; z-index: 999;">
+                        <div class="hover-item-img" style=" height: 40%;">
+                            <img src="/img/icon1.png" alt="">
+                        </div>
+                        <div class="title-text" style="width: 100%; height: 60%; display: flex; align-items: center; flex-direction: column;">
+                            <div class="hover-item-text">果蔬品质检测</div>
+                            <div class="hover-item-text">采摘更高效精准，降低果蔬成本</div>
+                            <div class="hover-item-text">产出品质提升，增加销售收入</div>
+                            <div class="hover-item-text">对接市场需求，减少果蔬滞销风险</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hover-item" style="margin-top: -40px; display: flex; align-items: center; flex-direction: column; background-image: url('/img/back2.jpg'); background-size: cover; background-position: center;">
+                    <div style="width: 100%; height: 100%; background-color: rgba(141, 141, 141, .6); border-radius: 15px; z-index: 999;">
+                        <div class="hover-item-img" style=" height: 40%;">
+                            <img src="/img/icon2.png" alt="">
+                        </div>
+                        <div class="title-text" style="width: 100%; height: 60%; display: flex; align-items: center; flex-direction: column;">
+                            <div class="hover-item-text">市场管理运营者</div>
+                            <div class="hover-item-text">客流更多，效益更好</div>
+                            <div class="hover-item-text">实时统计数据，智能分析管理</div>
+                            <div class="hover-item-text">提升运营效率，节约人工成本</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hover-item" style="margin-top: 40px; display: flex; align-items: center; flex-direction: column; background-image: url('/img/back3.jpg'); background-size: cover; background-position: center;">
+                    <div style="width: 100%; height: 100%; background-color: rgba(141, 141, 141, 0.6); border-radius: 15px; z-index: 999;">
+                        <div class="hover-item-img" style=" height: 40%;">
+                            <img src="/img/icon3.png" alt="">
+                        </div>
+                        <div class="title-text" style="width: 100%; height: 60%; display: flex; align-items: center; flex-direction: column;">
+                            <div class="hover-item-text">物流运输企业</div>
+                            <div class="hover-item-text">优化运输路线与资源配置，提高运输效率</div>
+                            <div class="hover-item-text">降低运输损耗与成本，提升经济效益</div>
+                            <div class="hover-item-text">增强服务质量与稳定性，树立良好品牌形象</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hover-item" style="margin-top: -40px; display: flex; align-items: center; flex-direction: column; background-image: url('/img/back4.jpg'); background-size: cover; background-position: center;">
+                    <div style="width: 100%; height: 100%; background-color: rgba(141, 141, 141, .6);border-radius: 15px; z-index: 999;">
+                        <div class="hover-item-img" style=" height: 40%;">
+                            <img src="/img/icon4.png" alt="">
+                        </div>
+                        <div class="title-text" style="width: 100%; height: 60%; display: flex; align-items: center; flex-direction: column;">
+                            <div class="hover-item-text">加工企业</div>
+                            <div class="hover-item-text">获得品质稳定、供应及时的原材料</div>
+                            <div class="hover-item-text">降低采购成本，提升加工生产效率</div>
+                            <div class="hover-item-text">优化产品质量，增强市场竞争力</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="smart-farm-trade">
+            <div class="left-column">
+                <h1>智慧果蔬产链平台</h1>
+                <hr>
+                <p>持续创新的智慧农贸技术团队，为您带来更智能的管理体验</p>
+            </div>
+            <div class="right-column" style="display: flex;">
+                <div class="platform-item">
+                    <div class="platform-name">果蔬溯源平台</div>
+                    <div class="platform-icon">
+                        <img src="/img/WPS图片(1).png" alt="果蔬溯源平台">
+                    </div>
+                </div>
+                <div class="platform-item">
+                    <div class="platform-name">果蔬成熟度检测平台</div>
+                    <div class="platform-icon">
+                        <img src="/img/WPS图片(2).png" alt="果蔬成熟度检测平台">
+                    </div>
+                </div>
+                <div class="platform-item">
+                    <div class="platform-name">果蔬品质检测平台</div>
+                    <div class="platform-icon">
+                        <img src="/img/WPS图片(3).png" alt="果蔬品质检测平台">
+                    </div>
+                </div>
+                <div class="platform-item">
+                    <div class="platform-name">物流追踪平台</div>
+                    <div class="platform-icon">
+                        <img src="/img/WPS图片(4).png" alt="物流追踪平台">
+                    </div>
+                </div>
+            </div>
+        </section>
+        <div style="width: 100%; height: 100vh; background-color: #0B2033;">
+            <div
+                style="width: 100%; height: 100vh; background-image: url('/img//ditu.png'); background-size: auto; background-position: center; background-repeat: no-repeat;">
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 轮播图功能
+        let slideIndex = 1;
+        showSlides(slideIndex);
+
+        function plusSlides(n) {
+            showSlides(slideIndex += n);
+        }
+
+        function currentSlide(n) {
+            showSlides(slideIndex = n);
+        }
+
+        function showSlides(n) {
+            let i;
+            let slides = document.getElementsByClassName("mySlides");
+            if (n > slides.length) {slideIndex = 1}
+            if (n < 1) {slideIndex = slides.length}
+            for (i = 0; i < slides.length; i++) {
+                slides[i].style.display = "none";
+            }
+            slides[slideIndex-1].style.display = "block";
+        }
+
+        // 自动轮播
+        setInterval(() => {
+            plusSlides(1);
+        }, 5000);
+    </script>
+</body>
+</html>

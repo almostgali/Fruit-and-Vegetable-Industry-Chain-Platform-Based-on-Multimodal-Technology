@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 物流平台后台管理</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-page">
+    <div id="login-page" class="page">
+        <div class="login-container">
+            <h1>登录</h1>
+            <div th:if="${not #strings.isEmpty(message)}" class="error-message" th:text="${message}"></div>
+            <form th:action="@{/user/login}" method="post">
+                <input type="text" id="username" name="username" placeholder="用户名" required>
+                <input type="password" id="password" name="password" placeholder="密码" required>
+                <button type="submit" class="btn-login">登录</button>
+            </form>
+            <button onclick="window.location.href='/user/register'" class="btn-register">注册</button>
+        </div>
+    </div>
+    <script src="/js/main.js"></script>
+</body>
+</html>

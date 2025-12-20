@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 物流平台后台管理</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-page">
+    <div class="login-page">
+        <div class="login-container">
+            <h1>注册</h1>
+            <div th:if="${not #strings.isEmpty(message)}" class="error-message" th:text="${message}"></div>
+            <form th:action="@{/user/register}" method="post">
+                <input type="text" id="reg-username" name="username" placeholder="用户名" required>
+                <input type="password" id="reg-password" name="password" placeholder="密码" required>
+                <input type="password" id="confirm-password" name="confirmPassword" placeholder="确认密码" required>
+                <input type="email" id="email" name="email" placeholder="邮箱" required>
+                <button type="submit" class="btn-register">立即注册</button>
+            </form>
+            <button onclick="window.location.href='/user/login'" class="btn-login">返回登录</button>
+        </div>
+    </div>
+    <script src="/js/main.js"></script>
+</body>
+</html>

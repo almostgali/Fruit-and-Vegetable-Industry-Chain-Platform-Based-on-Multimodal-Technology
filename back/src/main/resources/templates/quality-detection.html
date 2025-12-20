@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>果蔬品质检测</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .quality-detection-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+        
+        .header-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        
+        .return-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .return-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            align-items: stretch;
+        }
+        
+        .control-panel {
+            flex: 1;
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .upload-area {
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: linear-gradient(45deg, #f8f9ff, #e8f0ff);
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(45deg, #e8f0ff, #f0f8ff);
+            transform: translateY(-2px);
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 1.1rem;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .file-name {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(76, 175, 80, 0.4);
+        }
+        
+        .result-summary {
+            background: linear-gradient(45deg, #f8f9ff, #e8f0ff);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .result-summary .result-item {
+            display: table !important;
+            width: 100% !important;
+            padding: 12px 0 !important;
+            font-size: 1.1rem !important;
+            border: none !important;
+            border-bottom: none !important;
+            border-top: none !important;
+        }
+        
+        .result-summary .result-label {
+            display: table-cell !important;
+            font-weight: 600 !important;
+            color: #333 !important;
+            width: 120px !important;
+            padding-right: 20px !important;
+            vertical-align: middle !important;
+            border: none !important;
+        }
+        
+        .result-summary .result-value {
+            display: table-cell !important;
+            font-weight: 700 !important;
+            color: #667eea !important;
+            vertical-align: middle !important;
+            border: none !important;
+        }
+        
+        .display-panel {
+            flex: 1;
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .image-container {
+            text-align: center;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 320px;
+            border: none !important;
+            outline: none !important;
+        }
+        
+        .image-container::before,
+        .image-container::after,
+        .image-container *::before,
+        .image-container *::after {
+            display: none !important;
+            content: none !important;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+            border: none !important;
+            outline: none !important;
+        }
+        
+        .preview-image:hover {
+            transform: scale(1.02);
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .results-table th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .results-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            font-weight: 500;
+        }
+        
+        .results-table tbody tr:hover {
+            background: linear-gradient(45deg, #f8f9ff, #e8f0ff);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.2rem;
+            color: #333;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="quality-detection-container">
+        <div class="return-btn" onclick="window.location.href='/index'">
+            ← 返回首页
+        </div>
+        
+        <div id="loading" class="loading-overlay" style="display: none;">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <div class="loading-text">正在检测中，请稍候...</div>
+            </div>
+        </div>
+        
+        <div class="header-section">
+            <h1 class="page-title">🍎 果蔬品质检测</h1>
+            <p style="color: rgba(255,255,255,0.8); font-size: 1.1rem;">智能AI检测，精准分析果蔬品质</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="control-panel">
+                <div class="upload-section">
+                    <label for="image-upload" class="upload-area">
+                        <div class="upload-icon">📷</div>
+                        <div class="upload-text">点击上传果蔬图片</div>
+                        <div class="file-name" id="file-name"></div>
+                    </label>
+                    <input type="file" id="image-upload" accept="image/*" style="display: none;" />
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="start-detection" class="btn btn-primary" onclick="startQualityDetection()">
+                        🔍 开始检测
+                    </button>
+                    <button id="export-data" class="btn btn-secondary" onclick="exportData('quality')">
+                        📊 导出数据
+                    </button>
+                </div>
+                
+                <div class="result-summary" style="flex: 1; display: flex; flex-direction: column;">
+                    <h3 style="margin-top: 0; color: #333; text-align: center;">检测结果摘要</h3>
+                    <div class="result-item">
+                        <span class="result-label">类别</span>
+                        <span class="result-value category">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">品质等级</span>
+                        <span class="result-value maturity">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">品质描述</span>
+                        <span class="result-value sweetness">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="display-panel">
+                <div class="image-container">
+                    <div id="image-placeholder" style="
+                        width: 100%;
+                        max-width: 400px;
+                        height: 300px;
+                        border-radius: 15px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: #f8f9fa;
+                        color: #666;
+                        font-size: 1.1rem;
+                        margin: 0 auto 20px auto;
+                        border: none !important;
+                        outline: none !important;
+                    ">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem; margin-bottom: 10px;">📷</div>
+                            <div>上传图片后将在此显示</div>
+                        </div>
+                    </div>
+                    <img id="uploaded-image" class="preview-image" 
+                         style="display: none; max-width: 100%; max-height: 300px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);" 
+                         alt="上传的图片">
+                </div>
+                
+                <table id="result-table" class="results-table">
+                    <thead>
+                        <tr>
+                            <th>检测项目</th>
+                            <th>检测结果</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 这里会动态添加检测结果 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="/js/main.js"></script>
+    <script>
+        // 品质检测专用函数
+        function startQualityDetection() {
+            const fileInput = document.getElementById('image-upload');
+            const uploadedImage = document.getElementById('uploaded-image');
+            
+            if (!fileInput.files[0]) {
+                alert('请先上传图片');
+                return;
+            }
+            
+            // 显示加载状态
+            const detectBtn = document.getElementById('start-detection');
+            const originalText = detectBtn.textContent;
+            detectBtn.innerHTML = '<span class="loading"></span> 检测中...';
+            detectBtn.disabled = true;
+            
+            // 创建FormData对象
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            // 发送请求到后端
+            fetch('/api/model/detect/quality', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayQualityResult(data.data);
+                } else {
+                    alert('检测失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('检测请求失败:', error);
+                alert('检测失败: 网络错误或服务器异常');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                detectBtn.textContent = originalText;
+                detectBtn.disabled = false;
+            });
+        }
+        
+        // 显示品质检测结果
+        function displayQualityResult(result) {
+            // 更新左侧显示
+            document.querySelector('.category').textContent = result.category || '--';
+            document.querySelector('.maturity').textContent = result.quality_level || '--';
+            document.querySelector('.sweetness').textContent = result.quality_desc || '--';
+            
+            // 更新右侧表格
+            const tbody = document.querySelector('#result-table tbody');
+            tbody.innerHTML = '';
+            
+            // 添加检测结果到表格
+            const resultItems = [
+                { item: '类别', result: result.category || '--' },
+                { item: '品质等级', result: result.quality_level || '--' },
+                { item: '品质描述', result: result.quality_desc || '--' },
+                { item: '置信度', result: (result.confidence !== undefined ? result.confidence : '--') },
+                { item: '可信度说明', result: result.confidence_desc || '--' },
+                { item: '综合结论', result: result.result || '--' }
+            ];
+            
+            resultItems.forEach(item => {
+                const row = tbody.insertRow();
+                const itemCell = row.insertCell(0);
+                const resultCell = row.insertCell(1);
+                itemCell.textContent = item.item;
+                resultCell.textContent = item.result;
+                itemCell.style.cssText = 'text-align: center; padding: 10px; border: 1px solid #ddd;';
+                resultCell.style.cssText = 'text-align: center; padding: 10px; border: 1px solid #ddd;';
+            });
+        }
+        
+        // 图片上传处理
+        document.getElementById('image-upload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const uploadedImage = document.getElementById('uploaded-image');
+                    const placeholder = document.getElementById('image-placeholder');
+                    
+                    // 隐藏占位符，显示图片
+                    placeholder.style.display = 'none';
+                    uploadedImage.src = e.target.result;
+                    uploadedImage.style.display = 'block';
+                    
+                    // 更新文件名显示
+                    document.getElementById('file-name').textContent = file.name;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>
