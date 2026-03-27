@@ -280,9 +280,11 @@ nav ul {
 /* 首页容器仅在 fruit-home 内生效，避免与通用 .container 冲突 */
 #fruit-home .container{
   width: 100%;
+  max-width: none;
   min-height: 100vh;
   background-image: url('/img/图片高清处理1.png');
   background-size: cover;
+  background-position: center center;
   background-repeat: no-repeat;
   padding: 0;
   margin: 0;
