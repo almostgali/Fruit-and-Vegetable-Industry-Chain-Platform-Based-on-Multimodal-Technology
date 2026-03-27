@@ -39,30 +39,52 @@ def load_model(weights_path, model_type):
     except Exception as e:
         return None
 
-def preprocess_image(image_path):
-    # 简化图像预处理
-    try:
-        # 处理路径编码问题，确保能正确读取包含中文字符的路径
-        import os
-        import pathlib
-        
-        # 使用pathlib处理路径编码问题
-        path_obj = pathlib.Path(image_path)
-        
-        if path_obj.exists():
-            # 读取文件内容到内存，然后用BytesIO处理
-            import io
-            file_content = path_obj.read_bytes()
-            image = Image.open(io.BytesIO(file_content)).convert('RGB')
-            return image
-        else:
-            print(f"Error: Image file not found: {image_path}", file=sys.stderr)
-            print(f"Path exists check: {path_obj.exists()}", file=sys.stderr)
+def preprocess_media(file_path):
+    import mimetypes
+    mime_type, _ = mimetypes.guess_type(file_path)
+    is_video = mime_type and mime_type.startswith('video')
+    
+    if is_video:
+        try:
+            import cv2
+            from PIL import Image
+            cap = cv2.VideoCapture(file_path)
+            ret, frame = cap.read()
+            cap.release()
+            if ret:
+                # 转换BGR到RGB
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = Image.fromarray(frame)
+                return image, is_video
+            else:
+                print(f"Error: Could not read video frame: {file_path}", file=sys.stderr)
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error preprocessing video: {e}", file=sys.stderr)
             sys.exit(1)
-    except Exception as e:
-        print(f"Error preprocessing image: {e}", file=sys.stderr)
-        print(f"Image path: {repr(image_path)}", file=sys.stderr)
-        sys.exit(1)
+    else:
+        # 简化图像预处理
+        try:
+            # 处理路径编码问题，确保能正确读取包含中文字符的路径
+            import os
+            import pathlib
+            
+            # 使用pathlib处理路径编码问题
+            path_obj = pathlib.Path(file_path)
+            
+            if path_obj.exists():
+                # 读取文件内容到内存，然后用BytesIO处理
+                import io
+                from PIL import Image
+                file_content = path_obj.read_bytes()
+                image = Image.open(io.BytesIO(file_content)).convert('RGB')
+                return image, is_video
+            else:
+                print(f"Error: Image file not found: {file_path}", file=sys.stderr)
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error preprocessing image: {e}", file=sys.stderr)
+            sys.exit(1)
 
 def extract_classification_results(results, model):
     """提取分类结果，支持检测和分类两种模式"""
@@ -143,7 +165,7 @@ def detect_quality(model, image, image_path):
         import contextlib
         with open(os.devnull, 'w') as devnull:
             with contextlib.redirect_stdout(devnull):
-                results = model(image_path)
+                results = model(image)
         
         # 品质类别映射 (基于品质分类模型 level1..level4 的输出)
         quality_mapping = {
@@ -279,7 +301,7 @@ def detect_maturity(model, image, image_path):
         import contextlib
         with open(os.devnull, 'w') as devnull:
             with contextlib.redirect_stdout(devnull):
-                results = model(image_path)
+                results = model(image)
         
         # 成熟度类别映射 (基于新鲜度模型的输出)
         maturity_mapping = {
@@ -434,14 +456,16 @@ def main():
     # 加载模型
     model = load_model(args.weights, args.type)
     
-    # 预处理图像
-    image = preprocess_image(args.source)
+    # 预处理图像/视频 (视频会取第一帧)
+    image, is_video = preprocess_media(args.source)
     
     # 执行检测
     if args.type == 'quality':
         result = detect_quality(model, image, args.source)
     else:  # maturity
         result = detect_maturity(model, image, args.source)
+    
+    result['is_video'] = is_video
     
     # 输出JSON结果
     print(json.dumps(result, ensure_ascii=False))

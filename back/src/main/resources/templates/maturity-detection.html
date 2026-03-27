@@ -339,15 +339,18 @@
                 <div class="upload-section">
                     <label for="image-upload" class="upload-area">
                         <div class="upload-icon">🌱</div>
-                        <div class="upload-text">点击上传果蔬图片</div>
+                        <div class="upload-text">点击上传果蔬图片/视频</div>
                         <div class="file-name" id="file-name"></div>
                     </label>
-                    <input type="file" id="image-upload" accept="image/*" style="display: none;" />
+                    <input type="file" id="image-upload" accept="image/*,video/*" style="display: none;" />
                 </div>
                 
                 <div class="action-buttons">
                     <button id="start-detection" class="btn btn-primary" onclick="startMaturityDetection()">
                         🔍 开始检测
+                    </button>
+                    <button id="start-camera" class="btn btn-secondary" onclick="toggleCamera()" style="background: linear-gradient(45deg, #2196F3, #29B6F6); box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);">
+                        📷 开启摄像头
                     </button>
                     <button id="export-data" class="btn btn-secondary" onclick="exportData('maturity')">
                         📊 导出数据
@@ -372,7 +375,7 @@
             </div>
             
             <div class="display-panel">
-                <div class="image-container">
+                <div class="image-container" id="media-container">
                     <div id="image-placeholder" style="
                         width: 100%;
                         max-width: 400px;
@@ -390,12 +393,42 @@
                     ">
                         <div style="text-align: center;">
                             <div style="font-size: 3rem; margin-bottom: 10px;">🌱</div>
-                            <div>上传图片后将在此显示</div>
+                            <div>上传文件后将在此显示</div>
                         </div>
                     </div>
                     <img id="uploaded-image" class="preview-image" 
                          style="display: none; max-width: 100%; max-height: 300px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);" 
                          alt="上传的图片">
+                    <video id="uploaded-video" class="preview-image" controls
+                           style="display: none; max-width: 100%; max-height: 300px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                    </video>
+                    <video id="camera-stream" class="preview-image" autoplay playsinline
+                           style="display: none; max-width: 100%; max-height: 300px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: scaleX(-1);">
+                    </video>
+                    <canvas id="camera-canvas" style="display: none;"></canvas>
+                </div>
+                
+                <div id="iot-data-panel" style="display:none; margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 10px;">
+                    <h4 style="margin-top:0; color:#1976d2;">📡 模拟冷链IoT数据</h4>
+                    <div style="display:flex; justify-content:space-between; text-align:center;">
+                        <div>
+                            <div style="font-size:1.2rem; font-weight:bold; color:#d32f2f;" id="iot-temp">--</div>
+                            <div style="font-size:0.9rem; color:#666;">24h平均温度</div>
+                        </div>
+                        <div>
+                            <div style="font-size:1.2rem; font-weight:bold; color:#0288d1;" id="iot-hum">--</div>
+                            <div style="font-size:0.9rem; color:#666;">平均湿度</div>
+                        </div>
+                        <div>
+                            <div style="font-size:1.2rem; font-weight:bold; color:#388e3c;" id="iot-eth">--</div>
+                            <div style="font-size:0.9rem; color:#666;">乙烯浓度(ppm)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="fusion-prediction-panel" style="display:none; margin-bottom: 20px; padding: 15px; background: linear-gradient(45deg, #f1f8e9, #dcedc8); border-radius: 10px; border-left: 5px solid #7cb342;">
+                    <h4 style="margin-top:0; color:#33691e;">🔮 多模态融合预测 (视觉 + IoT)</h4>
+                    <p id="fusion-prediction-text" style="color: #33691e; line-height: 1.5; margin-bottom:0; font-weight: 500;"></p>
                 </div>
                 
                 <table id="result-table" class="results-table">
@@ -414,13 +447,112 @@
     </div>
     <script src="/js/main.js"></script>
     <script>
+        let cameraStream = null;
+        let detectionInterval = null;
+        let isCameraActive = false;
+
+        // 切换摄像头状态
+        async function toggleCamera() {
+            const cameraBtn = document.getElementById('start-camera');
+            const cameraVideo = document.getElementById('camera-stream');
+            const placeholder = document.getElementById('image-placeholder');
+            const uploadedImage = document.getElementById('uploaded-image');
+            const uploadedVideo = document.getElementById('uploaded-video');
+            
+            if (isCameraActive) {
+                // 关闭摄像头
+                stopCamera();
+                cameraBtn.innerHTML = '📷 开启摄像头';
+                cameraBtn.style.background = 'linear-gradient(45deg, #2196F3, #29B6F6)';
+                cameraVideo.style.display = 'none';
+                placeholder.style.display = 'flex';
+                isCameraActive = false;
+            } else {
+                // 开启摄像头
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    cameraStream = stream;
+                    cameraVideo.srcObject = stream;
+                    
+                    // 隐藏其他元素
+                    placeholder.style.display = 'none';
+                    uploadedImage.style.display = 'none';
+                    uploadedVideo.style.display = 'none';
+                    uploadedVideo.pause();
+                    
+                    cameraVideo.style.display = 'block';
+                    cameraBtn.innerHTML = '⏹️ 停止实时检测';
+                    cameraBtn.style.background = 'linear-gradient(45deg, #FF5722, #F44336)';
+                    isCameraActive = true;
+                    
+                    // 开始定时检测
+                    startRealtimeDetection();
+                } catch (err) {
+                    console.error("无法访问摄像头:", err);
+                    alert("无法访问摄像头，请确保已授予权限并且设备有摄像头。");
+                }
+            }
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+        }
+
+        function startRealtimeDetection() {
+            // 每秒捕获一帧并发送检测
+            detectionInterval = setInterval(() => {
+                if (!isCameraActive) return;
+                
+                const video = document.getElementById('camera-stream');
+                const canvas = document.getElementById('camera-canvas');
+                const ctx = canvas.getContext('2d');
+                
+                if (video.videoWidth === 0) return; // 视频还没准备好
+                
+                // 设置canvas尺寸与视频一致
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // 绘制当前帧
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 转换为blob并上传
+                canvas.toBlob(blob => {
+                    if (!blob) return;
+                    
+                    const formData = new FormData();
+                    formData.append('file', blob, 'camera_frame.jpg');
+                    
+                    fetch('/api/model/detect/maturity', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            displayMaturityResult(data.data);
+                        }
+                    })
+                    .catch(err => console.error('实时检测错误:', err));
+                }, 'image/jpeg', 0.8); // 80%质量，减少网络带宽
+                
+            }, 1500); // 每1.5秒检测一次
+        }
+
         // 成熟度检测专用函数
         function startMaturityDetection() {
             const fileInput = document.getElementById('image-upload');
             const uploadedImage = document.getElementById('uploaded-image');
             
             if (!fileInput.files[0]) {
-                alert('请先上传图片');
+                alert('请先上传图片或视频');
                 return;
             }
             
@@ -465,6 +597,24 @@
             document.querySelector('.freshness').textContent = result.maturity_desc || '--';
             document.querySelector('.suggestion').textContent = result.suggestion || '--';
             
+            // 如果有多模态IoT数据
+            if (result.iot_data) {
+                document.getElementById('iot-data-panel').style.display = 'block';
+                document.getElementById('iot-temp').textContent = result.iot_data.temperature_avg + '℃';
+                document.getElementById('iot-hum').textContent = result.iot_data.humidity + '%';
+                document.getElementById('iot-eth').textContent = result.iot_data.ethylene;
+            } else {
+                document.getElementById('iot-data-panel').style.display = 'none';
+            }
+
+            // 如果有多模态融合预测结果
+            if (result.fusion_prediction) {
+                document.getElementById('fusion-prediction-panel').style.display = 'block';
+                document.getElementById('fusion-prediction-text').innerText = result.fusion_prediction;
+            } else {
+                document.getElementById('fusion-prediction-panel').style.display = 'none';
+            }
+            
             // 更新右侧表格
             const tbody = document.querySelector('#result-table tbody');
             tbody.innerHTML = '';
@@ -473,11 +623,10 @@
             const resultItems = [
                 { item: '类别', result: result.category || '--' },
                 { item: '成熟度', result: result.maturity || '--' },
-                { item: '成熟度说明', result: result.maturity_desc || '--' },
                 { item: '建议', result: result.suggestion || '--' },
                 { item: '置信度', result: (result.confidence !== undefined ? result.confidence : '--') },
                 { item: '可信度说明', result: result.confidence_desc || '--' },
-                { item: '检测结果', result: result.result || '--' }
+                { item: '多模态预测', result: result.fusion_prediction ? '已生成' : '--' }
             ];
             
             resultItems.forEach(item => {
@@ -491,24 +640,32 @@
             });
         }
         
-        // 图片上传处理
+        // 文件上传处理
         document.getElementById('image-upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const uploadedImage = document.getElementById('uploaded-image');
-                    const placeholder = document.getElementById('image-placeholder');
-                    
-                    // 隐藏占位符，显示图片
-                    placeholder.style.display = 'none';
-                    uploadedImage.src = e.target.result;
+            if (file) {
+                const uploadedImage = document.getElementById('uploaded-image');
+                const uploadedVideo = document.getElementById('uploaded-video');
+                const placeholder = document.getElementById('image-placeholder');
+                
+                // 隐藏占位符
+                placeholder.style.display = 'none';
+                
+                const fileURL = URL.createObjectURL(file);
+                
+                if (file.type.startsWith('image/')) {
+                    uploadedVideo.style.display = 'none';
+                    uploadedVideo.pause();
+                    uploadedImage.src = fileURL;
                     uploadedImage.style.display = 'block';
-                    
-                    // 更新文件名显示
-                    document.getElementById('file-name').textContent = file.name;
-                };
-                reader.readAsDataURL(file);
+                } else if (file.type.startsWith('video/')) {
+                    uploadedImage.style.display = 'none';
+                    uploadedVideo.src = fileURL;
+                    uploadedVideo.style.display = 'block';
+                }
+                
+                // 更新文件名显示
+                document.getElementById('file-name').textContent = file.name;
             }
         });
     </script>

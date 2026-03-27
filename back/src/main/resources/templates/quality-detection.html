@@ -315,15 +315,18 @@
                 <div class="upload-section">
                     <label for="image-upload" class="upload-area">
                         <div class="upload-icon">📷</div>
-                        <div class="upload-text">点击上传果蔬图片</div>
+                        <div class="upload-text">点击上传果蔬图片/视频</div>
                         <div class="file-name" id="file-name"></div>
                     </label>
-                    <input type="file" id="image-upload" accept="image/*" style="display: none;" />
+                    <input type="file" id="image-upload" accept="image/*,video/*" style="display: none;" />
                 </div>
                 
                 <div class="action-buttons">
                     <button id="start-detection" class="btn btn-primary" onclick="startQualityDetection()">
                         🔍 开始检测
+                    </button>
+                    <button id="start-camera" class="btn btn-secondary" onclick="toggleCamera()" style="background: linear-gradient(45deg, #2196F3, #29B6F6); box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);">
+                        📷 开启摄像头
                     </button>
                     <button id="export-data" class="btn btn-secondary" onclick="exportData('quality')">
                         📊 导出数据
@@ -366,12 +369,19 @@
                     ">
                         <div style="text-align: center;">
                             <div style="font-size: 3rem; margin-bottom: 10px;">📷</div>
-                            <div>上传图片后将在此显示</div>
+                            <div>上传文件后将在此显示</div>
                         </div>
                     </div>
                     <img id="uploaded-image" class="preview-image" 
                          style="display: none; max-width: 100%; max-height: 300px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);" 
                          alt="上传的图片">
+                    <video id="uploaded-video" class="preview-image" controls
+                           style="display: none; max-width: 100%; max-height: 300px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                    </video>
+                    <video id="camera-stream" class="preview-image" autoplay playsinline
+                           style="display: none; max-width: 100%; max-height: 300px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: scaleX(-1);">
+                    </video>
+                    <canvas id="camera-canvas" style="display: none;"></canvas>
                 </div>
                 
                 <table id="result-table" class="results-table">
@@ -390,13 +400,112 @@
     </div>
     <script src="/js/main.js"></script>
     <script>
+        let cameraStream = null;
+        let detectionInterval = null;
+        let isCameraActive = false;
+
+        // 切换摄像头状态
+        async function toggleCamera() {
+            const cameraBtn = document.getElementById('start-camera');
+            const cameraVideo = document.getElementById('camera-stream');
+            const placeholder = document.getElementById('image-placeholder');
+            const uploadedImage = document.getElementById('uploaded-image');
+            const uploadedVideo = document.getElementById('uploaded-video');
+            
+            if (isCameraActive) {
+                // 关闭摄像头
+                stopCamera();
+                cameraBtn.innerHTML = '📷 开启摄像头';
+                cameraBtn.style.background = 'linear-gradient(45deg, #2196F3, #29B6F6)';
+                cameraVideo.style.display = 'none';
+                placeholder.style.display = 'flex';
+                isCameraActive = false;
+            } else {
+                // 开启摄像头
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    cameraStream = stream;
+                    cameraVideo.srcObject = stream;
+                    
+                    // 隐藏其他元素
+                    placeholder.style.display = 'none';
+                    uploadedImage.style.display = 'none';
+                    uploadedVideo.style.display = 'none';
+                    uploadedVideo.pause();
+                    
+                    cameraVideo.style.display = 'block';
+                    cameraBtn.innerHTML = '⏹️ 停止实时检测';
+                    cameraBtn.style.background = 'linear-gradient(45deg, #FF5722, #F44336)';
+                    isCameraActive = true;
+                    
+                    // 开始定时检测
+                    startRealtimeDetection();
+                } catch (err) {
+                    console.error("无法访问摄像头:", err);
+                    alert("无法访问摄像头，请确保已授予权限并且设备有摄像头。");
+                }
+            }
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+        }
+
+        function startRealtimeDetection() {
+            // 每秒捕获一帧并发送检测
+            detectionInterval = setInterval(() => {
+                if (!isCameraActive) return;
+                
+                const video = document.getElementById('camera-stream');
+                const canvas = document.getElementById('camera-canvas');
+                const ctx = canvas.getContext('2d');
+                
+                if (video.videoWidth === 0) return; // 视频还没准备好
+                
+                // 设置canvas尺寸与视频一致
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // 绘制当前帧
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 转换为blob并上传
+                canvas.toBlob(blob => {
+                    if (!blob) return;
+                    
+                    const formData = new FormData();
+                    formData.append('file', blob, 'camera_frame.jpg');
+                    
+                    fetch('/api/model/detect/quality', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            displayQualityResult(data.data);
+                        }
+                    })
+                    .catch(err => console.error('实时检测错误:', err));
+                }, 'image/jpeg', 0.8); // 80%质量，减少网络带宽
+                
+            }, 1500); // 每1.5秒检测一次
+        }
+
         // 品质检测专用函数
         function startQualityDetection() {
             const fileInput = document.getElementById('image-upload');
             const uploadedImage = document.getElementById('uploaded-image');
             
             if (!fileInput.files[0]) {
-                alert('请先上传图片');
+                alert('请先上传图片或视频');
                 return;
             }
             
@@ -466,24 +575,32 @@
             });
         }
         
-        // 图片上传处理
+        // 文件上传处理
         document.getElementById('image-upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const uploadedImage = document.getElementById('uploaded-image');
-                    const placeholder = document.getElementById('image-placeholder');
-                    
-                    // 隐藏占位符，显示图片
-                    placeholder.style.display = 'none';
-                    uploadedImage.src = e.target.result;
+            if (file) {
+                const uploadedImage = document.getElementById('uploaded-image');
+                const uploadedVideo = document.getElementById('uploaded-video');
+                const placeholder = document.getElementById('image-placeholder');
+                
+                // 隐藏占位符
+                placeholder.style.display = 'none';
+                
+                const fileURL = URL.createObjectURL(file);
+                
+                if (file.type.startsWith('image/')) {
+                    uploadedVideo.style.display = 'none';
+                    uploadedVideo.pause();
+                    uploadedImage.src = fileURL;
                     uploadedImage.style.display = 'block';
-                    
-                    // 更新文件名显示
-                    document.getElementById('file-name').textContent = file.name;
-                };
-                reader.readAsDataURL(file);
+                } else if (file.type.startsWith('video/')) {
+                    uploadedImage.style.display = 'none';
+                    uploadedVideo.src = fileURL;
+                    uploadedVideo.style.display = 'block';
+                }
+                
+                // 更新文件名显示
+                document.getElementById('file-name').textContent = file.name;
             }
         });
     </script>

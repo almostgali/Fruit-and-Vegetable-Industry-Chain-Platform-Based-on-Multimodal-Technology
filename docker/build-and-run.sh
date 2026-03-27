@@ -1,115 +1,90 @@
 #!/bin/bash
 
-# 设置错误时退出
+# Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "开始构建和运行Docker容器..."
+echo "=========================================="
+echo "   Fruit Recognition Deployment Script"
+echo "=========================================="
 
-# 检查是否以root权限运行
-if [ "$EUID" -ne 0 ]; then 
-    echo "请使用root权限运行此脚本"
-    exit 1
-fi
-
-# 配置阿里云yum源
-echo "配置阿里云yum源..."
-dnf clean all
-
-# 备份已存在的仓库文件
-if [ -f /etc/yum.repos.d/rocky.repo ]; then
-    mv /etc/yum.repos.d/rocky.repo /etc/yum.repos.d/rocky.repo.bak
-fi
-
-if [ -f /etc/yum.repos.d/rocky-extras.repo ]; then
-    mv /etc/yum.repos.d/rocky-extras.repo /etc/yum.repos.d/rocky-extras.repo.bak
-fi
-cat > /etc/yum.repos.d/rocky.repo << 'EOF'
-[baseos]
-name=Rocky Linux $releasever - BaseOS - mirrors.aliyun.com
-baseurl=https://mirrors.aliyun.com/rockylinux/$releasever/BaseOS/$basearch/os/
-gpgcheck=1
-enabled=1
-gpgkey=https://mirrors.aliyun.com/rockylinux/RPM-GPG-KEY-rockyofficial
-
-[appstream]
-name=Rocky Linux $releasever - AppStream - mirrors.aliyun.com
-baseurl=https://mirrors.aliyun.com/rockylinux/$releasever/AppStream/$basearch/os/
-gpgcheck=1
-enabled=1
-gpgkey=https://mirrors.aliyun.com/rockylinux/RPM-GPG-KEY-rockyofficial
-EOF
-
-# 检查 Docker 是否已安装
-if ! command -v docker &> /dev/null; then
-    echo "错误: Docker 未安装，请先安装 Docker"
-    exit 1
-fi
-
-# 检查 docker compose 是否已安装
-if ! command -v docker compose &> /dev/null; then
-    echo "错误: Docker Compose 未安装，请先安装 Docker Compose"
-    exit 1
-fi
-
-# 配置Docker镜像加速
-echo "配置Docker镜像加速..."
-mkdir -p /etc/docker
-cat > /etc/docker/daemon.json << 'EOF'
-{
-  "registry-mirrors": ["http://r9vq8yobjcpn34.xuanyuan.run"]
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
 }
-EOF
 
-# 启动Docker服务
-echo "启动Docker服务..."
-systemctl start docker
-systemctl enable docker
+# 1. Install Docker if not present (assuming Rocky Linux / CentOS / RHEL)
+if ! command_exists docker; then
+    echo "Docker not found. Installing Docker..."
+    
+    # Remove old versions
+    sudo dnf remove -y docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
 
-# 构建 Maven 构建器镜像
-echo "构建 Maven 构建器镜像..."
-docker build -t maven-builder:latest -f maven-builder.Dockerfile .
+    # Set up the repository (Aliyun)
+    sudo dnf config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 
-# 确保在docker目录下
-cd "$(dirname "$0")"
+    # Install Docker Engine
+    sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# 停止并删除现有容器
-echo "停止并删除现有容器..."
-docker compose down
-
-# 构建新镜像
-echo "构建新镜像..."
-docker compose build --no-cache
-
-# 启动容器
-echo "启动容器..."
-docker compose up -d
-
-# 检查容器状态
-echo "检查容器状态..."
-docker compose ps
-
-# 配置防火墙
-echo "配置防火墙规则..."
-if systemctl is-active firewalld &> /dev/null; then
-    echo "配置 FirewallD 规则..."
-    firewall-cmd --permanent --add-port=8088/tcp
-    firewall-cmd --permanent --add-port=3306/tcp
-    firewall-cmd --permanent --add-port=6379/tcp
-    firewall-cmd --reload
+    # Start Docker
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    
+    echo "Docker installed successfully."
 else
-    echo "FirewallD 未运行，正在启动..."
-    systemctl start firewalld
-    systemctl enable firewalld
-    echo "配置 FirewallD 规则..."
-    firewall-cmd --permanent --add-port=8088/tcp
-    firewall-cmd --permanent --add-port=3306/tcp
-    firewall-cmd --permanent --add-port=6379/tcp
-    firewall-cmd --reload
+    echo "Docker is already installed."
 fi
 
-echo "应用已成功启动！"
-echo "访问地址: http://$(hostname -I | awk '{print $1}'):8088"
+# 2. Configure Docker Registry Mirror (Aliyun)
+echo "Configuring Docker Registry Mirror..."
+if [ ! -f /etc/docker/daemon.json ]; then
+    sudo mkdir -p /etc/docker
+    echo '{
+      "registry-mirrors": ["https://registry.cn-hangzhou.aliyuncs.com"]
+    }' | sudo tee /etc/docker/daemon.json
+    sudo systemctl daemon-reload
+    sudo systemctl restart docker
+else
+    echo "/etc/docker/daemon.json already exists. Skipping mirror configuration."
+    echo "Please ensure you have configured a valid registry mirror if download speeds are slow."
+fi
 
-# 显示容器日志
-echo "显示容器日志（按Ctrl+C退出）..."
-docker compose logs -f
+# 3. Check for Docker Compose
+if ! command_exists docker-compose; then
+    # Try 'docker compose' (V2)
+    if docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose (V2) is available."
+        DOCKER_COMPOSE_CMD="docker compose"
+    else
+        echo "Installing Docker Compose..."
+        sudo dnf install -y docker-compose-plugin
+        DOCKER_COMPOSE_CMD="docker compose"
+    fi
+else
+    DOCKER_COMPOSE_CMD="docker-compose"
+fi
+
+# 4. Build and Run
+echo "Building and starting services..."
+
+# Get the directory of the script
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+cd "$SCRIPT_DIR"
+
+# Ensure uploads directory exists on host to avoid permission issues if created by root in container
+mkdir -p uploads
+
+# Build and start containers
+# We use --build to ensure image is rebuilt if code changes
+$DOCKER_COMPOSE_CMD up -d --build
+
+echo "=========================================="
+echo "   Deployment Completed Successfully!"
+echo "   Access the application at: http://<YOUR_SERVER_IP>:8080"
+echo "=========================================="

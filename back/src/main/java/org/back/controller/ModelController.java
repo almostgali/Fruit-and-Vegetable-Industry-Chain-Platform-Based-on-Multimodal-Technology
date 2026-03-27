@@ -26,7 +26,7 @@ public class ModelController {
         try {
             if (file.isEmpty()) {
                 result.put("success", false);
-                result.put("message", "请选择要检测的图片");
+                result.put("message", "请选择要检测的文件");
                 return result;
             }
 
@@ -67,7 +67,7 @@ public class ModelController {
         try {
             if (file.isEmpty()) {
                 result.put("success", false);
-                result.put("message", "请选择要检测的图片");
+                result.put("message", "请选择要检测的文件");
                 return result;
             }
 

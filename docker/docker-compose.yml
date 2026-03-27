@@ -1,69 +1,51 @@
-version: '3.8'
-
 services:
-  fruit-app:
+  app:
     build:
-      context: ..
+      context: ../
       dockerfile: docker/Dockerfile
-    image: fruit-recognition:latest
-    container_name: fruit-app
+    container_name: fruit-recognition-backend
+    restart: always
     ports:
-      - "${APP_PORT:-8088}:8088"
-    volumes:
-      - ../back/uploads:/app/uploads
-      - ../back/models:/app/models
-      - ../back/logs:/app/logs
+      - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
-      - JAVA_OPTS=${JAVA_OPTS:--Xms512m -Xmx2g}
-      - MYSQL_HOST=mysql
-      - MYSQL_PORT=3306
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-fruit_recognition}
-      - MYSQL_USERNAME=${MYSQL_USERNAME:-root}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-123456}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - TZ=Asia/Shanghai
+      # Override database URL to point to the mysql service
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/fruit_recognition?useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      # Ensure model paths are correct inside the container
+      - MODEL_QUALITY_PATH=/app/models/fruit_quality_yolo.pt
+      - MODEL_MATURITY_PATH=/app/models/fruit_freshness_yolo.pt
+      - UPLOAD_PATH=/app/uploads/
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
     depends_on:
       - mysql
-      - redis
-    restart: unless-stopped
     networks:
-      - fruit-net
+      - app-network
 
   mysql:
     image: mysql:8.0
-    container_name: fruit-mysql
-    ports:
-      - "${MYSQL_PORT:-3306}:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./init-sql:/docker-entrypoint-initdb.d
+    container_name: fruit-recognition-db
+    restart: always
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-123456}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-fruit_recognition}
-      - MYSQL_USER=${MYSQL_USERNAME:-fruit_user}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-123456}
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    restart: unless-stopped
-    networks:
-      - fruit-net
-
-  redis:
-    image: redis:7.0
-    container_name: fruit-redis
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=fruit_recognition
+      - TZ=Asia/Shanghai
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "3306:3306"
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
+      - mysql-data:/var/lib/mysql
+      # Mount initialization scripts if any
+      # - ../back/src/main/resources/sql:/docker-entrypoint-initdb.d
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     networks:
-      - fruit-net
-
-volumes:
-  mysql_data:
-  redis_data:
+      - app-network
 
 networks:
-  fruit-net:
+  app-network:
     driver: bridge
+
+volumes:
+  mysql-data:

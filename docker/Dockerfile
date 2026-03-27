@@ -1,124 +1,53 @@
-# 智慧果蔬识别与物流管理平台 - Docker镜像
-# 多阶段构建，支持Java Spring Boot应用和Python AI模型
+# Use RockyLinux 9 directly as we will use pre-built JAR
+FROM rockylinux:9
 
-# ================================
-# 阶段1: Maven构建阶段
-# ================================
-FROM maven-builder:latest AS maven-builder
-
+# Set working directory
 WORKDIR /app
 
-# 复制Maven配置文件
-COPY back/pom.xml .
+# 1. Configure Aliyun Yum Source for Rocky Linux 9
+RUN sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+        -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' \
+        -i.bak \
+        /etc/yum.repos.d/rocky-*.repo && \
+    dnf makecache
 
-# 下载依赖（利用Docker缓存）
-RUN mvn dependency:go-offline -B
+# 2. Install Java 21, Python 3.12, and Pip
+# Rocky Linux 9 AppStream usually has java-21-openjdk and python3.12
+RUN dnf install -y java-21-openjdk-headless python3.12 python3.12-pip mesa-libGL && \
+    dnf clean all
 
-# 复制源代码
-COPY back/src ./src
+# 3. Configure Aliyun PyPI Mirror and Install Python Dependencies
+# Increase timeout and split installation to handle large files (like torch) better
+# Install CPU-only version of PyTorch to avoid downloading massive CUDA dependencies
+RUN pip3.12 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip3.12 install --no-cache-dir --default-timeout=1000 torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-# 构建应用
-RUN mvn clean package -DskipTests -B
+# Copy requirements.txt and install other dependencies
+# We copy this AFTER installing torch to better utilize layer caching
+COPY back/src/main/resources/scripts/requirements.txt .
+RUN pip3.12 install --no-cache-dir --default-timeout=1000 -r requirements.txt
 
-# ================================
-# 阶段2: Python环境准备
-# ================================
-FROM python:3.11 AS python-builder
+# 4. Copy the pre-built JAR file from host
+# Make sure to run 'mvn clean package' on host first!
+COPY back/target/*.jar app.jar
 
-# 配置apt源
-RUN rm -f /etc/apt/sources.list.d/*.list && \
-    echo "deb https://mirrors.aliyun.com/debian/ bookworm main non-free contrib" > /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian/ bookworm-updates main non-free contrib" >> /etc/apt/sources.list
+# 5. Copy models
+# Assuming models are in back/models in the source context
+COPY back/models ./models
 
-# 安装系统依赖（完整版镜像已包含大部分依赖）
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
-    && rm -rf /var/lib/apt/lists/*
+# 6. Copy python scripts
+# Since we are not building from source, we need to ensure scripts are available
+RUN mkdir -p target/classes/scripts
+COPY back/src/main/resources/scripts/detect.py target/classes/scripts/
 
-# 设置工作目录
-WORKDIR /python-deps
+# Create uploads directory
+RUN mkdir uploads
 
-# 配置pip源
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
-    pip config set install.trusted-host mirrors.aliyun.com
+# Expose port
+EXPOSE 8080
 
-# 安装Python依赖
-RUN echo "torch==2.0.1" > requirements.txt && \
-    echo "torchvision==0.15.2" >> requirements.txt && \
-    echo "ultralytics==8.0.196" >> requirements.txt && \
-    echo "opencv-python==4.8.0.76" >> requirements.txt && \
-    echo "numpy==1.24.3" >> requirements.txt && \
-    echo "Pillow==10.0.0" >> requirements.txt && \
-    echo "PyYAML==6.0.1" >> requirements.txt && \
-    echo "requests==2.31.0" >> requirements.txt
+# Environment variables
+ENV JAVA_OPTS=""
 
-# 安装Python依赖
-RUN pip install --no-cache-dir -r requirements.txt
-
-# ================================
-# 阶段3: 最终运行时镜像
-# ================================
-FROM openjdk:21-slim AS runtime
-
-# 设置环境变量
-ENV JAVA_OPTS="-Xms512m -Xmx2g -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai" \
-    SPRING_PROFILES_ACTIVE=docker \
-    APP_PORT=8088 \
-    MYSQL_HOST=mysql \
-    MYSQL_PORT=3306 \
-    MYSQL_DATABASE=fruit_recognition \
-    MYSQL_USERNAME=root \
-    MYSQL_PASSWORD=123456 \
-    REDIS_HOST=redis \
-    REDIS_PORT=6379 \
-    UPLOAD_PATH=/app/uploads \
-    MODEL_PATH=/app/models
-
-# 配置apt源
-RUN rm -f /etc/apt/sources.list.d/*.list && \
-    echo "deb https://mirrors.aliyun.com/debian/ bookworm main non-free contrib" > /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian/ bookworm-updates main non-free contrib" >> /etc/apt/sources.list
-
-# 安装系统依赖
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    python3.11 python3-pip \
-    curl wget unzip \
-    libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# 配置pip源
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
-    pip config set install.trusted-host mirrors.aliyun.com
-
-# 创建应用用户
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-
-# 设置工作目录
-WORKDIR /app
-
-# 从Python构建阶段复制Python环境
-COPY --from=python-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=python-builder /usr/local/bin /usr/local/bin
-
-# 从Maven构建阶段复制JAR文件
-COPY --from=maven-builder /app/target/*.jar app.jar
-
-# 复制模型文件
-COPY back/models/ ./models/
-
-# 创建必要的目录
-RUN mkdir -p uploads logs temp && \
-    chown -R appuser:appuser /app
-
-# 暴露应用端口
-EXPOSE ${APP_PORT}
-
-# 切换到应用用户
-USER appuser
-
-# 启动命令
-CMD ["sh", "-c", "java ${JAVA_OPTS} -jar app.jar"]
+# Command to run the application
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
