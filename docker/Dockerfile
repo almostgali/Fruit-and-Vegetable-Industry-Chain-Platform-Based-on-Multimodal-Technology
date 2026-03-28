@@ -1,53 +1,66 @@
-# Use RockyLinux 9 directly as we will use pre-built JAR
-FROM rockylinux:9
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 
-# Set working directory
+WORKDIR /workspace
+
+RUN mkdir -p /root/.m2 && \
+    printf '%s\n' \
+      '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"' \
+      '          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' \
+      '          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">' \
+      '  <mirrors>' \
+      '    <mirror>' \
+      '      <id>aliyunmaven</id>' \
+      '      <mirrorOf>*</mirrorOf>' \
+      '      <name>Aliyun Maven</name>' \
+      '      <url>https://maven.aliyun.com/repository/public</url>' \
+      '    </mirror>' \
+      '  </mirrors>' \
+      '</settings>' \
+    > /root/.m2/settings.xml
+
+COPY back/pom.xml back/pom.xml
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -f back/pom.xml -DskipTests dependency:go-offline
+
+COPY back back
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -f back/pom.xml -DskipTests package
+
+
+FROM rockylinux:9 AS runtime
+
 WORKDIR /app
 
-# 1. Configure Aliyun Yum Source for Rocky Linux 9
 RUN sed -e 's|^mirrorlist=|#mirrorlist=|g' \
         -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' \
         -i.bak \
         /etc/yum.repos.d/rocky-*.repo && \
     dnf makecache
 
-# 2. Install Java 21, Python 3.12, and Pip
-# Rocky Linux 9 AppStream usually has java-21-openjdk and python3.12
-RUN dnf install -y java-21-openjdk-headless python3.12 python3.12-pip mesa-libGL && \
+RUN dnf install -y java-21-openjdk-headless python3 python3-pip mesa-libGL && \
     dnf clean all
 
-# 3. Configure Aliyun PyPI Mirror and Install Python Dependencies
-# Increase timeout and split installation to handle large files (like torch) better
-# Install CPU-only version of PyTorch to avoid downloading massive CUDA dependencies
-RUN pip3.12 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
-    pip3.12 install --no-cache-dir --default-timeout=1000 torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN python3 -m pip install --no-cache-dir --upgrade pip && \
+    python3 -m pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 
-# Copy requirements.txt and install other dependencies
-# We copy this AFTER installing torch to better utilize layer caching
-COPY back/src/main/resources/scripts/requirements.txt .
-RUN pip3.12 install --no-cache-dir --default-timeout=1000 -r requirements.txt
+RUN python3 -m pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-# 4. Copy the pre-built JAR file from host
-# Make sure to run 'mvn clean package' on host first!
-COPY back/target/*.jar app.jar
+COPY --from=build /workspace/back/src/main/resources/scripts/requirements.txt /app/requirements.txt
+RUN python3 - <<'PY'\nfrom pathlib import Path\nsrc = Path('/app/requirements.txt').read_text(encoding='utf-8').splitlines()\nfiltered = []\nfor line in src:\n    s = line.strip()\n    if not s or s.startswith('#'):\n        continue\n    if s.startswith('torch'):\n        continue\n    if s.startswith('torchvision'):\n        continue\n    filtered.append(s)\nPath('/app/requirements-runtime.txt').write_text('\\n'.join(filtered) + '\\n', encoding='utf-8')\nPY\npython3 -m pip install --no-cache-dir -r /app/requirements-runtime.txt
 
-# 5. Copy models
-# Assuming models are in back/models in the source context
-COPY back/models ./models
+COPY --from=build /workspace/back/target/*.jar /app/app.jar
 
-# 6. Copy python scripts
-# Since we are not building from source, we need to ensure scripts are available
-RUN mkdir -p target/classes/scripts
-COPY back/src/main/resources/scripts/detect.py target/classes/scripts/
+COPY --from=build /workspace/back/models /app/models
 
-# Create uploads directory
-RUN mkdir uploads
+RUN mkdir -p /app/target/classes/scripts
+COPY --from=build /workspace/back/src/main/resources/scripts/detect.py /app/target/classes/scripts/detect.py
+COPY --from=build /workspace/back/src/main/resources/scripts/fusion_predict.py /app/target/classes/scripts/fusion_predict.py
 
-# Expose port
+RUN mkdir -p /app/uploads
+
+ENV PYTHONIOENCODING=utf-8
+ENV PYTHONUTF8=1
+
 EXPOSE 8080
 
-# Environment variables
-ENV JAVA_OPTS=""
-
-# Command to run the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
