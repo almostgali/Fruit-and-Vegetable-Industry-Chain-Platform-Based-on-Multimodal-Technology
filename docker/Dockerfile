@@ -43,7 +43,7 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DEFAULT_TIMEOUT=120
 RUN python3 -m pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 
-RUN python3 -m pip install --no-cache-dir --retries 10 torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN python3 -m pip install --no-cache-dir --retries 10 --prefer-binary torch torchvision
 
 COPY --from=build /workspace/back/src/main/resources/scripts/requirements.txt /app/requirements.txt
 RUN python3 - <<'PY'
