@@ -49,6 +49,25 @@ public class ModelServiceImpl implements ModelService {
         this.fruitMaturityMapper = fruitMaturityMapper;
     }
 
+    private String resolvePythonExecutable(String userDir) {
+        String osName = String.valueOf(System.getProperty("os.name", "")).toLowerCase();
+        boolean isWindows = osName.contains("win");
+
+        if (isWindows) {
+            String venvPython = Paths.get(userDir, ".venv", "Scripts", "python.exe").toString();
+            if (new File(venvPython).exists()) {
+                return venvPython;
+            }
+            return "python";
+        }
+
+        String venvPython = Paths.get(userDir, ".venv", "bin", "python").toString();
+        if (new File(venvPython).exists()) {
+            return venvPython;
+        }
+        return "python3";
+    }
+
     @Override
     public Map<String, Object> detectFruitQuality(MultipartFile imageFile) {
         try {
@@ -190,8 +209,7 @@ public class ModelServiceImpl implements ModelService {
     private Map<String, Object> executeFusionModel(Map<String, Object> vision, Map<String, Object> iot) throws IOException {
         try {
             String userDir = System.getProperty("user.dir");
-            String venvPython = Paths.get(userDir, ".venv", "Scripts", "python.exe").toString();
-            String pythonPath = new File(venvPython).exists() ? venvPython : "python";
+            String pythonPath = resolvePythonExecutable(userDir);
 
             String packagedScript = Paths.get(userDir, "target", "classes", "scripts", "fusion_predict.py").toString();
             String sourceScript = Paths.get(userDir, "src", "main", "resources", "scripts", "fusion_predict.py").toString();
@@ -327,8 +345,7 @@ public class ModelServiceImpl implements ModelService {
             // 构建ProcessBuilder调用Python脚本
             // 优先使用项目内 .venv Python，回退到系统 Python
             String userDir = System.getProperty("user.dir");
-            String venvPython = Paths.get(userDir, ".venv", "Scripts", "python.exe").toString();
-            String pythonPath = new File(venvPython).exists() ? venvPython : "python";
+            String pythonPath = resolvePythonExecutable(userDir);
             // 选择脚本路径：优先 target/classes 下的打包脚本，回退到源码目录
             String packagedScript = Paths.get(System.getProperty("user.dir"), "target", "classes", "scripts", "detect.py").toString();
             String sourceScript = Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "scripts", "detect.py").toString();
@@ -414,8 +431,7 @@ public class ModelServiceImpl implements ModelService {
             // 构建ProcessBuilder调用Python脚本
             // 优先使用项目内 .venv Python，回退到系统 Python
             String userDir = System.getProperty("user.dir");
-            String venvPython = Paths.get(userDir, ".venv", "Scripts", "python.exe").toString();
-            String pythonPath = new File(venvPython).exists() ? venvPython : "python";
+            String pythonPath = resolvePythonExecutable(userDir);
             // 选择脚本路径：优先 target/classes 下的打包脚本，回退到源码目录
             String packagedScript = Paths.get(System.getProperty("user.dir"), "target", "classes", "scripts", "detect.py").toString();
             String sourceScript = Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "scripts", "detect.py").toString();

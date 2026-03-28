@@ -45,6 +45,13 @@ public class ModelController {
             }
 
             Map<String, Object> detectionResult = modelService.detectFruitQuality(file);
+
+            if (detectionResult != null && detectionResult.containsKey("error")) {
+                result.put("success", false);
+                result.put("message", String.valueOf(detectionResult.get("error")));
+                result.put("data", detectionResult);
+                return result;
+            }
             
             // 保存检测结果到数据库
             if (detectionResult != null && !detectionResult.containsKey("error")) {
@@ -86,6 +93,13 @@ public class ModelController {
             }
 
             Map<String, Object> detectionResult = modelService.detectFruitMaturity(file);
+
+            if (detectionResult != null && detectionResult.containsKey("error")) {
+                result.put("success", false);
+                result.put("message", String.valueOf(detectionResult.get("error")));
+                result.put("data", detectionResult);
+                return result;
+            }
             
             // 保存检测结果到数据库
             if (detectionResult != null && !detectionResult.containsKey("error")) {
