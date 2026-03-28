@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+
 IMAGE_NAME="${IMAGE_NAME:-fruit-platform:latest}"
 APP_CONTAINER="${APP_CONTAINER:-fruit-platform}"
 MYSQL_CONTAINER="${MYSQL_CONTAINER:-fruit-mysql}"
 DOCKER_NETWORK="${DOCKER_NETWORK:-fruit-net}"
 
-APP_PORT="${APP_PORT:-80}"
+APP_PORT="${APP_PORT:-8080}"
 MYSQL_PORT="${MYSQL_PORT:-3306}"
 
 MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-PLEASE_CHANGE_ME}"
@@ -15,7 +19,7 @@ MYSQL_DATABASE="${MYSQL_DATABASE:-fruit_recognition}"
 SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-root}"
 SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-$MYSQL_ROOT_PASSWORD}"
 
-SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:mysql://$MYSQL_CONTAINER:3306/$MYSQL_DATABASE?useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true}"
+SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:mysql://$MYSQL_CONTAINER:3306/$MYSQL_DATABASE?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}"
 
 UPLOADS_DIR="${UPLOADS_DIR:-/opt/fruit/uploads}"
 

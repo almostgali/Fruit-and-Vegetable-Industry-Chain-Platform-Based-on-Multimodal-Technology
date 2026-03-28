@@ -19,12 +19,10 @@ RUN mkdir -p /root/.m2 && \
     > /root/.m2/settings.xml
 
 COPY back/pom.xml back/pom.xml
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f back/pom.xml -DskipTests dependency:go-offline
+RUN mvn -f back/pom.xml -DskipTests dependency:go-offline
 
 COPY back back
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f back/pom.xml -DskipTests package
+RUN mvn -f back/pom.xml -DskipTests package
 
 
 FROM rockylinux:9 AS runtime
@@ -46,7 +44,22 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip && \
 RUN python3 -m pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 COPY --from=build /workspace/back/src/main/resources/scripts/requirements.txt /app/requirements.txt
-RUN python3 - <<'PY'\nfrom pathlib import Path\nsrc = Path('/app/requirements.txt').read_text(encoding='utf-8').splitlines()\nfiltered = []\nfor line in src:\n    s = line.strip()\n    if not s or s.startswith('#'):\n        continue\n    if s.startswith('torch'):\n        continue\n    if s.startswith('torchvision'):\n        continue\n    filtered.append(s)\nPath('/app/requirements-runtime.txt').write_text('\\n'.join(filtered) + '\\n', encoding='utf-8')\nPY\npython3 -m pip install --no-cache-dir -r /app/requirements-runtime.txt
+RUN python3 - <<'PY'
+from pathlib import Path
+
+src = Path("/app/requirements.txt").read_text(encoding="utf-8").splitlines()
+filtered = []
+for line in src:
+    s = line.strip()
+    if not s or s.startswith("#"):
+        continue
+    if s.startswith("torch") or s.startswith("torchvision"):
+        continue
+    filtered.append(s)
+
+Path("/app/requirements-runtime.txt").write_text("\n".join(filtered) + "\n", encoding="utf-8")
+PY
+RUN python3 -m pip install --no-cache-dir -r /app/requirements-runtime.txt
 
 COPY --from=build /workspace/back/target/*.jar /app/app.jar
 

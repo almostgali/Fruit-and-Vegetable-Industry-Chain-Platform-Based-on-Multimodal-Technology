@@ -50,7 +50,7 @@
 编辑 [application.properties](file:///c:/Users/xjl/Desktop/%E5%90%8E%E7%A8%B7-%E5%A4%9A%E6%A8%A1%E6%80%81%E7%89%88%E6%9C%AC/back/src/main/resources/application.properties)：
 
 ```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/fruit_recognition?useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+spring.datasource.url=jdbc:mysql://localhost:3306/fruit_recognition?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
 spring.datasource.username=你的用户名
 spring.datasource.password=你的密码
 ```
@@ -120,6 +120,10 @@ mvn -DskipTests spring-boot:run
 
 ## 生产部署（Linux）
 
+支持两种方式：直接运行 Jar（服务器装好 Java/Python），或用 Docker（推荐，红帽系更省事）。
+
+### 方式 A：直接运行 Jar
+
 建议直接在服务器上克隆代码并在 `back` 目录下运行（这样 `models/`、`target/classes/scripts/`、`uploads/` 的相对路径能保持一致）。
 
 ```bash
@@ -134,3 +138,33 @@ nohup java -jar target/back-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
 ```
 
 对外访问需在云安全组/防火墙放通端口（默认 `8080`），或自行用 Nginx 反代到 `80/443`。
+
+### 方式 B：Docker / Docker Compose（红帽系推荐）
+
+项目已提供：
+- [Dockerfile](file:///c:/Users/xjl/Desktop/%E5%90%8E%E7%A8%B7-%E5%A4%9A%E6%A8%A1%E6%80%81%E7%89%88%E6%9C%AC/docker/Dockerfile)：构建后端镜像（含 Java 21 + Python 推理依赖）
+- [run.sh](file:///c:/Users/xjl/Desktop/%E5%90%8E%E7%A8%B7-%E5%A4%9A%E6%A8%A1%E6%80%81%E7%89%88%E6%9C%AC/docker/run.sh)：纯 docker 启动 MySQL + 应用
+- [docker-compose.yml](file:///c:/Users/xjl/Desktop/%E5%90%8E%E7%A8%B7-%E5%A4%9A%E6%A8%A1%E6%80%81%E7%89%88%E6%9C%AC/docker/docker-compose.yml)：一条命令启动 MySQL + 应用
+
+Docker Compose 启动（推荐）：
+
+```bash
+cd Fruit-and-Vegetable-Industry-Chain-Platform-Based-on-Multimodal-Technology/docker
+export MYSQL_ROOT_PASSWORD='你的强密码'
+docker compose up -d --build
+```
+
+纯 docker 启动：
+
+```bash
+cd Fruit-and-Vegetable-Industry-Chain-Platform-Based-on-Multimodal-Technology
+export MYSQL_ROOT_PASSWORD='你的强密码'
+bash docker/run.sh
+```
+
+放通端口（示例）：
+
+```bash
+firewall-cmd --permanent --add-port=8080/tcp
+firewall-cmd --reload
+```
