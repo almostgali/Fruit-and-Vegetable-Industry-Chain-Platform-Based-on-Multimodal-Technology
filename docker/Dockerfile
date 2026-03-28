@@ -38,10 +38,12 @@ RUN sed -e 's|^mirrorlist=|#mirrorlist=|g' \
 RUN dnf install -y java-21-openjdk-headless python3 python3-pip mesa-libGL && \
     dnf clean all
 
-RUN python3 -m pip install --no-cache-dir --upgrade pip && \
-    python3 -m pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DEFAULT_TIMEOUT=120
+RUN python3 -m pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 
-RUN python3 -m pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN python3 -m pip install --no-cache-dir --retries 10 torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 COPY --from=build /workspace/back/src/main/resources/scripts/requirements.txt /app/requirements.txt
 RUN python3 - <<'PY'
@@ -59,7 +61,7 @@ for line in src:
 
 Path("/app/requirements-runtime.txt").write_text("\n".join(filtered) + "\n", encoding="utf-8")
 PY
-RUN python3 -m pip install --no-cache-dir -r /app/requirements-runtime.txt
+RUN python3 -m pip install --no-cache-dir --retries 10 -r /app/requirements-runtime.txt
 
 COPY --from=build /workspace/back/target/*.jar /app/app.jar
 
